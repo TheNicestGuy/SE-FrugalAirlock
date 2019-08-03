@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29123.88
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SE-FrugalAirlock", "SE-FrugalAirlock.csproj", "{34575C45-DCBC-40DA-8AE2-4149D270E2EC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{34575C45-DCBC-40DA-8AE2-4149D270E2EC}.Debug|x64.ActiveCfg = Debug|x64
+		{34575C45-DCBC-40DA-8AE2-4149D270E2EC}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6573140E-7D45-4008-8B67-52AE4ACFF323}
+	EndGlobalSection
+EndGlobal
