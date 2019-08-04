@@ -4,9 +4,8 @@
 
 TNG's Frugal Airlock is a C# script meant for a Programmable Block in the game
 _Space Engineers_ by Keen Software House. It enables the setup of airlocks:
-enclosed, airtight spaces that allow engineers to easily pass between
-low-pressure zones (i.e., "vacuum") and breathable-pressure zones (i.e.,
-"habitat").
+enclosed, airtight spaces that allow engineers to easily pass between low-oxygen
+zones (i.e., "vacuum") and breathable zones (i.e., "habitat").
 
 Compared to other airlock strategies, TNG's Frugal Airlock places priority on a
 few key principles, in this order:
