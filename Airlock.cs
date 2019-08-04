@@ -139,6 +139,34 @@ namespace IngameScript
 
             #endregion // FillVents
 
+            #region DrainVents
+
+            private IList<IMyAirVent> _drainVents;
+            /// <summary>
+            /// Returns references to all of this airlock's "drain vents": Air
+            /// Vents that are connected to drainage tanks and NOTHING ELSE.
+            /// </summary>
+            /// <remarks>
+            /// <para>The returned collection is immutable, though the vents
+            /// themselves can be manipulated by reference.</para>
+            /// </remarks>
+            public IEnumerable<IMyAirVent> DrainVents
+            {
+                get
+                {
+                    return new List<IMyAirVent>(_drainVents);
+                }
+            }
+
+            public void AddDrainVent(IMyAirVent newVent)
+            {
+                this._drainVents.Add(newVent);
+            }
+
+            //TODO Add methods to manipulate drain vents, like sucking, blowing, shutting off
+
+            #endregion // DrainVents
+
             #endregion // Mandatory Blocks
 
             #region Constructors
@@ -148,6 +176,7 @@ namespace IngameScript
                 this._outerDoors = new List<IMyDoor>();
                 this._innerDoors = new List<IMyDoor>();
                 this._fillVents = new List<IMyAirVent>();
+                this._drainVents = new List<IMyAirVent>();
             }
 
             /// <summary>
