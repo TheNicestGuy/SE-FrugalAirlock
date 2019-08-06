@@ -42,7 +42,7 @@ namespace IngameScript
 
             #region OuterDoors
 
-            private IList<IMyDoor> _outerDoors;
+            private readonly IList<IMyDoor> _outerDoors;
             /// <summary>
             /// Returns references to all of this airlock's "outer doors":
             /// passable doors that can seal the airlock chamber from the
@@ -77,7 +77,7 @@ namespace IngameScript
 
             #region InnerDoors
 
-            private IList<IMyDoor> _innerDoors;
+            private readonly IList<IMyDoor> _innerDoors;
             /// <summary>
             /// Returns references to all of this airlock's "inner doors":
             /// passable doors that can seal the airlock chamber from the
@@ -112,7 +112,7 @@ namespace IngameScript
 
             #region FillVents
 
-            private IList<IMyAirVent> _fillVents;
+            private readonly IList<IMyAirVent> _fillVents;
             /// <summary>
             /// Returns references to all of this airlock's "fill vents": Air
             /// Vents that are connected to main oxygen supplies and NOT to the
@@ -141,7 +141,7 @@ namespace IngameScript
 
             #region DrainVents
 
-            private IList<IMyAirVent> _drainVents;
+            private readonly IList<IMyAirVent> _drainVents;
             /// <summary>
             /// Returns references to all of this airlock's "drain vents": Air
             /// Vents that are connected to drainage tanks and NOTHING ELSE.
@@ -167,6 +167,32 @@ namespace IngameScript
 
             #endregion // DrainVents
 
+            #region DrainTanks
+
+            private readonly IList<IMyGasTank> _drainTanks;
+            /// <summary>
+            /// Returns references to all of this airlock's "drain tanks": Air
+            /// Vents that are connected to drainage tanks and NOTHING ELSE.
+            /// </summary>
+            /// <remarks>
+            /// <para>The returned collection is immutable, though the vents
+            /// themselves can be manipulated by reference.</para>
+            /// </remarks>
+            public IEnumerable<IMyGasTank> DrainTanks
+            {
+                get
+                {
+                    return new List<IMyGasTank>(_drainTanks);
+                }
+            }
+
+            public void AddDrainTank(IMyGasTank newTank)
+            {
+                this._drainTanks.Add(newTank);
+            }
+
+            #endregion // DrainTanks
+
             #endregion // Mandatory Blocks
 
             #region Constructors
@@ -177,6 +203,7 @@ namespace IngameScript
                 this._innerDoors = new List<IMyDoor>();
                 this._fillVents = new List<IMyAirVent>();
                 this._drainVents = new List<IMyAirVent>();
+                this._drainTanks = new List<IMyGasTank>();
             }
 
             /// <summary>
