@@ -5,7 +5,13 @@ VisualStudioVersion = 16.0.29123.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SE-FrugalAirlock", "SE-FrugalAirlock.csproj", "{34575C45-DCBC-40DA-8AE2-4149D270E2EC}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SE-BlockExtensions", "..\SE-BlockExtensions\SE-BlockExtensions.shproj", "{61EBA249-19F3-48B6-A25B-A4CEE90168BA}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\SE-BlockExtensions\SE_BlockExtensions.projitems*{34575c45-dcbc-40da-8ae2-4149d270e2ec}*SharedItemsImports = 4
+		..\SE-BlockExtensions\SE_BlockExtensions.projitems*{61eba249-19f3-48b6-a25b-a4cee90168ba}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 	EndGlobalSection

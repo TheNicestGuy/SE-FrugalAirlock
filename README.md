@@ -25,3 +25,5 @@ few key principles, in this order:
    your various airlock-related blocks, from a well-commented template. There is
    no need to edit the script with a list of block or group names, nor is any
    naming convention imposed.
+
+Complete details are in [the wiki](wiki).

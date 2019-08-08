@@ -21,62 +21,171 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        // This file contains your actual script.
-        //
-        // You can either keep all your code here, or you can create separate
-        // code files to make your program easier to navigate while coding.
-        //
-        // In order to add a new utility class, right-click on your project, 
-        // select 'New' then 'Add Item...'. Now find the 'Space Engineers'
-        // category under 'Visual C# Items' on the left hand side, and select
-        // 'Utility Class' in the main area. Name it in the box below, and
-        // press OK. This utility class will be merged in with your code when
-        // deploying your final script.
-        //
-        // You can also simply create a new utility class manually, you don't
-        // have to use the template if you don't want to. Just do so the first
-        // time to see what a utility class looks like.
-        // 
-        // Go to:
-        // https://github.com/malware-dev/MDK-SE/wiki/Quick-Introduction-to-Space-Engineers-Ingame-Scripts
-        //
-        // to learn more about ingame scripts.
+        #region Program / Private Members
+        
+        /// <summary>
+        /// Dictionary of all discovered Airlocks, keyed by Name.
+        /// </summary>
+        private Dictionary<string, Airlock> _allAirlocks;
+
+        private MyIni _theIniParser = new MyIni();
+
+        #endregion Program / Private Members
+
+        #region Program / Constants
+
+        private const string INI_SECTION_NAME = "TNGFrugalAirlock";
+        private const string INI_AIRLOCK_KEY = "Airlock";
+        private const string INI_ROLE_KEY = "Role";
+
+        #endregion Program / Constants
 
         public Program()
         {
-            // The constructor, called only once every session and
-            // always before any other method is called. Use it to
-            // initialize your script. 
-            //     
-            // The constructor is optional and can be removed if not
-            // needed.
-            // 
-            // It's recommended to set Runtime.UpdateFrequency 
-            // here, which will allow your script to run itself without a 
-            // timer block.
+            this._allAirlocks = new Dictionary<string, Airlock>(StringComparer.CurrentCultureIgnoreCase);
+
+            // Find all blocks with a [TNGFrugalAirlock] section
+            List<IMyTerminalBlock> allAirlockBlocks = new List<IMyTerminalBlock>();
+            this.GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(
+                allAirlockBlocks
+                , block => MyIni.HasSection(block.CustomData, INI_SECTION_NAME)
+            );
+
+            // Iterate through them and parse them into airlocks and roles
+            MyIniParseResult parseResult;
+            string airlockName;
+            Airlock thisAirlock;
+            string roleName;
+            foreach (IMyTerminalBlock thisBlock in allAirlockBlocks)
+            {
+                if (!this._theIniParser.TryParse(thisBlock.CustomData, INI_SECTION_NAME, out parseResult))
+                {
+                    throw new Exception(
+                        $"Failed to parse airlock configuration data."
+                        + $"\nBlock: {thisBlock.CustomName}"
+                        + $"\nParse result: {parseResult.ToString()}"
+                    );
+                }
+
+                // Parse the airlock name and get a new or existing reference to the airlock
+                airlockName = this._theIniParser.Get(INI_SECTION_NAME, INI_AIRLOCK_KEY).ToString();
+                if (string.IsNullOrEmpty(airlockName))
+                {
+                    throw new Exception(
+                        $"Failed to parse airlock configuration data because no airlock name was given."
+                        + $"\nBlock: {thisBlock.CustomName}"
+                    );
+                }
+
+                if (this._allAirlocks.ContainsKey(airlockName))
+                {
+                    thisAirlock = this._allAirlocks[airlockName];
+                }
+                else
+                {
+                    thisAirlock = new Airlock(airlockName);
+                    this._allAirlocks.Add(airlockName, thisAirlock);
+                }
+
+                roleName = this._theIniParser.Get(INI_SECTION_NAME, INI_ROLE_KEY).ToString();
+                if (string.IsNullOrEmpty(roleName))
+                {
+                    throw new Exception(
+                        $"Failed to parse airlock configuration data because no role was given."
+                        + $"\nBlock: {thisBlock.CustomName}"
+                    );
+                }
+
+                bool wrongTypeForRole = false;
+                switch (roleName)
+                {
+                    case Airlock.ROLE_NAME_OUTERDOOR:
+                        if (!(thisBlock is IMyDoor))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddOuterDoor(thisBlock as IMyDoor);
+                        break;
+                    case Airlock.ROLE_NAME_INNERDOOR:
+                        if (!(thisBlock is IMyDoor))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddInnerDoor(thisBlock as IMyDoor);
+                        break;
+                    case Airlock.ROLE_NAME_FILLVENT:
+                        if (!(thisBlock is IMyAirVent))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddFillVent(thisBlock as IMyAirVent);
+                        break;
+                    case Airlock.ROLE_NAME_DRAINVENT:
+                        if (!(thisBlock is IMyAirVent))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddDrainVent(thisBlock as IMyAirVent);
+                        break;
+                    case Airlock.ROLE_NAME_DRAINTANK:
+                        if (!(thisBlock is IMyGasTank))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddDrainTank(thisBlock as IMyGasTank);
+                        break;
+                    case Airlock.ROLE_NAME_HABBAROMETER:
+                        if (!(thisBlock is IMyAirVent))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddHabitatBarometer(thisBlock as IMyAirVent);
+                        break;
+                    case Airlock.ROLE_NAME_VACBAROMETER:
+                        if (!(thisBlock is IMyAirVent))
+                        {
+                            wrongTypeForRole = true;
+                            break;
+                        }
+                        thisAirlock.AddHabitatBarometer(thisBlock as IMyAirVent);
+                        break;
+                    default:
+                        throw new Exception(
+                            $"Failed to parse airlock configuration data because a block's role was not recognized."
+                            + $"\nBlock: {thisBlock.CustomName}"
+                            + $"\nRole: {roleName}"
+                        );
+                } // switch (roleName)
+
+                if (wrongTypeForRole)
+                {
+                    throw new Exception(
+                        $"Failed to parse airlock configuration data because a block is the wrong type for its role."
+                        + $"\nBlock: {thisBlock.CustomName}"
+                        + $"\nRole: {roleName}"
+                    );
+                }
+
+            } // foreach thisBlock
         }
 
         public void Save()
         {
-            // Called when the program needs to save its state. Use
-            // this method to save your state to the Storage field
-            // or some other means. 
-            // 
-            // This method is optional and can be removed if not
-            // needed.
         }
 
         public void Main(string argument, UpdateType updateSource)
         {
-            // The main entry point of the script, invoked every time
-            // one of the programmable block's Run actions are invoked,
-            // or the script updates itself. The updateSource argument
-            // describes where the update came from. Be aware that the
-            // updateSource is a  bitfield  and might contain more than 
-            // one update type.
-            // 
-            // The method itself is required, but the arguments above
-            // can be removed if not needed.
+            // report on airlocks and blocks found
+            Echo(
+                $"Found {this._allAirlocks.Count().ToString()} valid airlock(s)."
+                + $"\n Names: {String.Join(", ", this._allAirlocks.Select(a => a.Key))}"
+            );
         }
     }
 }

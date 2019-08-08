@@ -27,6 +27,21 @@ namespace IngameScript
         /// </summary>
         public class Airlock
         {
+
+            #region Constants, Enums, Statics
+
+            public const string ROLE_NAME_OUTERDOOR = "OuterDoor";
+            public const string ROLE_NAME_INNERDOOR = "InnerDoor";
+            public const string ROLE_NAME_FILLVENT = "FillVent";
+            public const string ROLE_NAME_DRAINVENT = "DrainVent";
+            public const string ROLE_NAME_DRAINTANK = "DrainTank";
+            public const string ROLE_NAME_HABBAROMETER = "HabitatBarometer";
+            public const string ROLE_NAME_VACBAROMETER = "VacuumBarometer";
+
+            #endregion Constants, Enums, Statics
+
+            #region Basic Properties
+
             /// <summary>
             /// Name of the airlock
             /// </summary>
@@ -38,9 +53,11 @@ namespace IngameScript
             /// </remarks>
             public string Name { get; set; }
 
+            #endregion Basic Properties
+
             #region Mandatory Blocks
 
-            #region OuterDoors
+            #region Mandatory Blocks / OuterDoors
 
             private readonly IList<IMyDoor> _outerDoors;
             /// <summary>
@@ -66,16 +83,20 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Associates a door with this airlock as an Outer Door
+            /// </summary>
             public void AddOuterDoor(IMyDoor newDoor)
             {
+                if (null == newDoor) throw new ArgumentNullException("newDoor");
                 this._outerDoors.Add(newDoor);
             }
 
             //TODO Add methods to manipulate outer doors, like opening, closing, locking
 
-            #endregion // OuterDoors
+            #endregion Mandatory Blocks /  OuterDoors
 
-            #region InnerDoors
+            #region Mandatory Blocks / InnerDoors
 
             private readonly IList<IMyDoor> _innerDoors;
             /// <summary>
@@ -101,16 +122,20 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Associates a door with this airlock as an Inner Door
+            /// </summary>
             public void AddInnerDoor(IMyDoor newDoor)
             {
+                if (null == newDoor) throw new ArgumentNullException("newDoor");
                 this._innerDoors.Add(newDoor);
             }
 
             //TODO Add methods to manipulate inner doors, like opening, closing, locking
 
-            #endregion // InnerDoors
+            #endregion Mandatory Blocks /  InnerDoors
 
-            #region FillVents
+            #region Mandatory Blocks / FillVents
 
             private readonly IList<IMyAirVent> _fillVents;
             /// <summary>
@@ -130,16 +155,20 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Associates a vent with this airlock as a Fill Vent
+            /// </summary>
             public void AddFillVent(IMyAirVent newVent)
             {
+                if (null == newVent) throw new ArgumentNullException("newVent");
                 this._fillVents.Add(newVent);
             }
 
             //TODO Add methods to manipulate fill vents, like sucking, blowing, shutting off
 
-            #endregion // FillVents
+            #endregion Mandatory Blocks /  FillVents
 
-            #region DrainVents
+            #region Mandatory Blocks / DrainVents
 
             private readonly IList<IMyAirVent> _drainVents;
             /// <summary>
@@ -158,16 +187,20 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Associates a vent with this airlock as a Drain Vent
+            /// </summary>
             public void AddDrainVent(IMyAirVent newVent)
             {
+                if (null == newVent) throw new ArgumentNullException("newVent");
                 this._drainVents.Add(newVent);
             }
 
             //TODO Add methods to manipulate drain vents, like sucking, blowing, shutting off
 
-            #endregion // DrainVents
+            #endregion Mandatory Blocks /  DrainVents
 
-            #region DrainTanks
+            #region Mandatory Blocks / DrainTanks
 
             private readonly IList<IMyGasTank> _drainTanks;
             /// <summary>
@@ -186,14 +219,100 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Associates an oxygen tank with this airlock as a Drain Tank
+            /// </summary>
+            /// <remarks>
+            /// IMyGasTank objects are not necessarily oxygen tanks. If
+            /// <paramref name="newTank"/> is not, an Exception will be thrown.
+            /// </remarks>
             public void AddDrainTank(IMyGasTank newTank)
             {
+                if (null == newTank) throw new ArgumentNullException("newTank");
+                if (!newTank.IsForOxygen())
+                {
+                    throw new Exception(
+                        "Attempted to add a non-oxygen tank as an airlock Draink Tank."
+                        + $"Block: {newTank.CustomName}"
+                    );
+                }
                 this._drainTanks.Add(newTank);
             }
 
-            #endregion // DrainTanks
+            #endregion Mandatory Blocks /  DrainTanks
 
-            #endregion // Mandatory Blocks
+            #region Mandatory Blocks / HabitatBarometers
+
+            private readonly IList<IMyAirVent> _habBarometers;
+            /// <summary>
+            /// Returns references to all of this airlock's "habitat
+            /// barometers": Air Vents that face the habitat and are used to
+            /// read the habitat's oxygen pressure.
+            /// </summary>
+            /// <remarks>
+            /// <para>It should not matter whether these vents are dedicated
+            /// to the airlock or part of the main life support system. There
+            /// can be any number of vents in the collection, but the pressure
+            /// will only ever be read from the first one.</para>
+            /// <para>The returned collection is immutable, though the vents
+            /// themselves can be manipulated by reference.</para>
+            /// </remarks>
+            public IEnumerable<IMyAirVent> HabitatBarometers
+            {
+                get
+                {
+                    return new List<IMyAirVent>(_habBarometers);
+                }
+            }
+
+            /// <summary>
+            /// Associates a vent with this airlock as a Habitat Barometer
+            /// </summary>
+            public void AddHabitatBarometer(IMyAirVent newVent)
+            {
+                if (null == newVent) throw new ArgumentNullException("newVent");
+                this._habBarometers.Add(newVent);
+            }
+
+            #endregion Mandatory Blocks /  HabitatBarometers
+
+            #region Mandatory Blocks / VacuumBarometers
+
+            private readonly IList<IMyAirVent> _vacBarometers;
+            /// <summary>
+            /// Returns references to all of this airlock's "vacuum barometers":
+            /// Air Vents that face the vacuum and are used to read the vacuum's
+            /// oxygen pressure.
+            /// </summary>
+            /// <remarks>
+            /// <para>It would be normal for these blocks to be detached from
+            /// all oxygen supplies and mostly non-functional, as they are used
+            /// ONLY for reading pressure. There can be any number of vents in
+            /// the collection, but the pressure will only ever be read from the
+            /// first one.</para>
+            /// <para>The returned collection is immutable, though the vents
+            /// themselves can be manipulated by reference.</para>
+            /// </remarks>
+            public IEnumerable<IMyAirVent> VacuumBarometers
+            {
+                get
+                {
+                    return new List<IMyAirVent>(_vacBarometers);
+                }
+            }
+
+            /// <summary>
+            /// Associates a vent with this airlock as a Vacuum Barometer
+            /// </summary>
+            public void AddVacuumBarometer(IMyAirVent newVent)
+            {
+                if (null == newVent) throw new ArgumentNullException("newVent");
+                this._vacBarometers.Add(newVent);
+            }
+
+            #endregion Mandatory Blocks / VacuumBarometers
+
+            #endregion Mandatory Blocks
 
             #region Constructors
 
@@ -204,6 +323,8 @@ namespace IngameScript
                 this._fillVents = new List<IMyAirVent>();
                 this._drainVents = new List<IMyAirVent>();
                 this._drainTanks = new List<IMyGasTank>();
+                this._habBarometers = new List<IMyAirVent>();
+                this._vacBarometers = new List<IMyAirVent>();
             }
 
             /// <summary>
