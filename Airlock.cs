@@ -326,7 +326,7 @@ namespace IngameScript
 
             #endregion Mandatory Blocks
 
-            #region Constructors
+            #region Constructors and Factory Methods
 
             private Airlock()
             {
@@ -349,14 +349,191 @@ namespace IngameScript
 
             }
 
-            #endregion // Constructors
+            /// <summary>
+            /// Search a collection of blocks and create a dictionary of Airlock
+            /// objects keyed by Name out of the relevant blocks.
+            /// </summary>
+            /// <param name="allBlocks">The collection of blocks. The more this
+            /// can be narrowed beforehand, the less work this method has to do,
+            /// but DiscoverAllAirlocks will effectively sort through a
+            /// completely unfiltered set.</param>
+            /// <param name="iniParser">Optional reference to a <see
+            /// cref="MyIni"/> object that will be used to parse blocks'
+            /// CustomData. If absent, the method will create its own.</param>
+            /// <param name="iniSectionName">Optional name of the INI section
+            /// header that appears in a block's CustomData before airlock
+            /// configuration data. If absent, <see
+            /// cref="Program.INI_SECTION_NAME"/> will be used.</param>
+            /// <returns>A dictionary of all discrete Airlock objects found,
+            /// keyed by their Names.</returns>
+            /// <remarks>DiscoverAllAirlocks does not check whether the found
+            /// Airlocks are complete or functional. However, it will throw
+            /// useful exceptions when there is easily-spotted bad configuration
+            /// data.</remarks>
+            public static IDictionary<string, Airlock> DiscoverAllAirlocks(
+                IEnumerable<IMyTerminalBlock> allBlocks
+                , MyIni iniParser = null
+                , string iniSectionName = null
+            )
+            {
+                if (null == iniParser) iniParser = new MyIni();
+                if (null == iniSectionName) iniSectionName = Program.INI_SECTION_NAME;
+
+                Dictionary<string, Airlock> foundAirlocks
+                    = new Dictionary<string, Airlock>(StringComparer.CurrentCultureIgnoreCase);
+
+                MyIniParseResult parseResult;
+                string airlockName;
+                Airlock thisAirlock;
+                string roleName;
+                foreach (IMyTerminalBlock thisBlock in allBlocks)
+                {
+                    if (!iniParser.TryParse(thisBlock.CustomData, iniSectionName, out parseResult))
+                    {
+                        throw new Exception(
+                            $"Failed to parse airlock configuration data."
+                            + $"\nBlock: {thisBlock.CustomName}"
+                            + $"\nParse result: {parseResult.ToString()}"
+                        );
+                    }
+
+                    // Parse the airlock name and get a new or existing reference to the airlock
+                    airlockName = iniParser.Get(iniSectionName, INI_AIRLOCK_KEY).ToString();
+                    if (string.IsNullOrEmpty(airlockName))
+                    {
+                        throw new Exception(
+                            $"Failed to parse airlock configuration data because no airlock name was given."
+                            + $"\nBlock: {thisBlock.CustomName}"
+                        );
+                    }
+
+                    if (foundAirlocks.ContainsKey(airlockName))
+                    {
+                        thisAirlock = foundAirlocks[airlockName];
+                    }
+                    else
+                    {
+                        thisAirlock = new Airlock(airlockName);
+                        foundAirlocks.Add(airlockName, thisAirlock);
+                    }
+
+                    roleName = iniParser.Get(iniSectionName, INI_ROLE_KEY).ToString();
+                    if (string.IsNullOrEmpty(roleName))
+                    {
+                        throw new Exception(
+                            $"Failed to parse airlock configuration data because no role was given."
+                            + $"\nBlock: {thisBlock.CustomName}"
+                        );
+                    }
+
+                    bool wrongTypeForRole = false;
+                    switch (roleName)
+                    {
+                        case Airlock.ROLE_NAME_OUTERDOOR:
+                            if (!(thisBlock is IMyDoor))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddOuterDoor(thisBlock as IMyDoor);
+                            break;
+                        case Airlock.ROLE_NAME_INNERDOOR:
+                            if (!(thisBlock is IMyDoor))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddInnerDoor(thisBlock as IMyDoor);
+                            break;
+                        case Airlock.ROLE_NAME_FILLVENT:
+                            if (!(thisBlock is IMyAirVent))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddFillVent(thisBlock as IMyAirVent);
+                            break;
+                        case Airlock.ROLE_NAME_DRAINVENT:
+                            if (!(thisBlock is IMyAirVent))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddDrainVent(thisBlock as IMyAirVent);
+                            break;
+                        case Airlock.ROLE_NAME_DRAINTANK:
+                            if (!(thisBlock is IMyGasTank))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddDrainTank(thisBlock as IMyGasTank);
+                            break;
+                        case Airlock.ROLE_NAME_HABBAROMETER:
+                            if (!(thisBlock is IMyAirVent))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddHabitatBarometer(thisBlock as IMyAirVent);
+                            break;
+                        case Airlock.ROLE_NAME_VACBAROMETER:
+                            if (!(thisBlock is IMyAirVent))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddVacuumBarometer(thisBlock as IMyAirVent);
+                            break;
+                        default:
+                            throw new Exception(
+                                $"Failed to parse airlock configuration data because a block's role was not recognized."
+                                + $"\nBlock: {thisBlock.CustomName}"
+                                + $"\nRole: {roleName}"
+                            );
+                    } // switch (roleName)
+
+                    if (wrongTypeForRole)
+                    {
+                        throw new Exception(
+                            $"Failed to parse airlock configuration data because a block is the wrong type for its role."
+                            + $"\nBlock: {thisBlock.CustomName}"
+                            + $"\nRole: {roleName}"
+                        );
+                    }
+
+                } // foreach thisBlock
+
+                return foundAirlocks;
+            }
+
+            #endregion Constructors and Factory Methods
 
             #region Instance Methods
 
             /// <summary>
-            /// Tests whether this airlock has all the components needed to function.
+            /// Tests whether this airlock has all the components needed to
+            /// function.
             /// </summary>
-            /// <returns></returns>
+            /// <returns><code>false</code> if any mandatory components are
+            /// missing or non-functional. Otherwise
+            /// <code>true</code>.</returns>
+            /// <remarks>
+            /// <para>
+            /// This is a fairly superficial check. In addition to just doing
+            /// counts, it will check <see cref="IMyCubeBlock.IsFunctional"/>
+            /// and discount any blocks that are too damaged to function.
+            /// However, it will not check other important factors, like
+            /// sufficient power, or that <see cref="HabitatBarometers"/> face
+            /// an airtight space.
+            /// </para>
+            /// <para>
+            /// One might expect <code>IsComplete</code> to ensure that each
+            /// block is Enabled, but it does not. This is because the script
+            /// will automatically disable and enable certain blocks during
+            /// normal operation.
+            /// </para>
+            /// </remarks>
             public bool IsComplete()
             {
                 bool allGood = true;
