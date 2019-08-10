@@ -153,7 +153,7 @@ namespace IngameScript
                             wrongTypeForRole = true;
                             break;
                         }
-                        thisAirlock.AddHabitatBarometer(thisBlock as IMyAirVent);
+                        thisAirlock.AddVacuumBarometer(thisBlock as IMyAirVent);
                         break;
                     default:
                         throw new Exception(
@@ -183,9 +183,12 @@ namespace IngameScript
         {
             // report on airlocks and blocks found
             Echo(
-                $"Found {this._allAirlocks.Count().ToString()} valid airlock(s)."
-                + $"\n Names: {String.Join(", ", this._allAirlocks.Select(a => a.Key))}"
+                $"Found {this._allAirlocks.Count().ToString()} airlock(s)."
             );
+            foreach (Airlock a in this._allAirlocks.Values)
+            {
+                Echo($"{a.Name} - {(a.IsComplete() ? "valid" : a.BadConfigReport)}");
+            }
         }
     }
 }

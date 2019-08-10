@@ -53,6 +53,18 @@ namespace IngameScript
             /// </remarks>
             public string Name { get; set; }
 
+            private StringBuilder _badConfigReport = new StringBuilder();
+            /// <summary>
+            /// Text explaining how this airlock is misconfigured.
+            /// </summary>
+            public string BadConfigReport
+            {
+                get
+                {
+                    return this._badConfigReport.ToString();
+                }
+            }
+
             #endregion Basic Properties
 
             #region Mandatory Blocks
@@ -338,6 +350,71 @@ namespace IngameScript
             }
 
             #endregion // Constructors
+
+            #region Instance Methods
+
+            /// <summary>
+            /// Tests whether this airlock has all the components needed to function.
+            /// </summary>
+            /// <returns></returns>
+            public bool IsComplete()
+            {
+                bool allGood = true;
+                this._badConfigReport = new StringBuilder("Config problems:");
+
+                if (
+                    this._outerDoors.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Outer Doors.");
+                    allGood = false;
+                }
+                if (
+                    this._innerDoors.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Inner Doors.");
+                    allGood = false;
+                }
+                if (
+                    this._fillVents.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Fill Vents.");
+                    allGood = false;
+                }
+                if (
+                    this._drainVents.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Drain Vents.");
+                    allGood = false;
+                }
+                if (
+                    this._drainTanks.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Drain Tanks.");
+                    allGood = false;
+                }
+                if (
+                    this._habBarometers.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Habitat Barometers.");
+                    allGood = false;
+                }
+                if (
+                    this._vacBarometers.Count(x => x.IsFunctional) < 1
+                )
+                {
+                    this._badConfigReport.Append(" No functional Vacuum Barometers.");
+                    allGood = false;
+                }
+                return allGood;
+            }
+
+            #endregion Instance Methods
         }
     }
 }
