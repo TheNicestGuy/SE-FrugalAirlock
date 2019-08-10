@@ -42,137 +42,17 @@ namespace IngameScript
 
         public Program()
         {
-            this._allAirlocks = new Dictionary<string, Airlock>(StringComparer.CurrentCultureIgnoreCase);
-
-            // Find all blocks with a [TNGFrugalAirlock] section
             List<IMyTerminalBlock> allAirlockBlocks = new List<IMyTerminalBlock>();
             this.GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(
                 allAirlockBlocks
                 , block => MyIni.HasSection(block.CustomData, INI_SECTION_NAME)
             );
-
-            // Iterate through them and parse them into airlocks and roles
-            MyIniParseResult parseResult;
-            string airlockName;
-            Airlock thisAirlock;
-            string roleName;
-            foreach (IMyTerminalBlock thisBlock in allAirlockBlocks)
-            {
-                if (!this._theIniParser.TryParse(thisBlock.CustomData, INI_SECTION_NAME, out parseResult))
-                {
-                    throw new Exception(
-                        $"Failed to parse airlock configuration data."
-                        + $"\nBlock: {thisBlock.CustomName}"
-                        + $"\nParse result: {parseResult.ToString()}"
-                    );
-                }
-
-                // Parse the airlock name and get a new or existing reference to the airlock
-                airlockName = this._theIniParser.Get(INI_SECTION_NAME, INI_AIRLOCK_KEY).ToString();
-                if (string.IsNullOrEmpty(airlockName))
-                {
-                    throw new Exception(
-                        $"Failed to parse airlock configuration data because no airlock name was given."
-                        + $"\nBlock: {thisBlock.CustomName}"
-                    );
-                }
-
-                if (this._allAirlocks.ContainsKey(airlockName))
-                {
-                    thisAirlock = this._allAirlocks[airlockName];
-                }
-                else
-                {
-                    thisAirlock = new Airlock(airlockName);
-                    this._allAirlocks.Add(airlockName, thisAirlock);
-                }
-
-                roleName = this._theIniParser.Get(INI_SECTION_NAME, INI_ROLE_KEY).ToString();
-                if (string.IsNullOrEmpty(roleName))
-                {
-                    throw new Exception(
-                        $"Failed to parse airlock configuration data because no role was given."
-                        + $"\nBlock: {thisBlock.CustomName}"
-                    );
-                }
-
-                bool wrongTypeForRole = false;
-                switch (roleName)
-                {
-                    case Airlock.ROLE_NAME_OUTERDOOR:
-                        if (!(thisBlock is IMyDoor))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddOuterDoor(thisBlock as IMyDoor);
-                        break;
-                    case Airlock.ROLE_NAME_INNERDOOR:
-                        if (!(thisBlock is IMyDoor))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddInnerDoor(thisBlock as IMyDoor);
-                        break;
-                    case Airlock.ROLE_NAME_FILLVENT:
-                        if (!(thisBlock is IMyAirVent))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddFillVent(thisBlock as IMyAirVent);
-                        break;
-                    case Airlock.ROLE_NAME_DRAINVENT:
-                        if (!(thisBlock is IMyAirVent))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddDrainVent(thisBlock as IMyAirVent);
-                        break;
-                    case Airlock.ROLE_NAME_DRAINTANK:
-                        if (!(thisBlock is IMyGasTank))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddDrainTank(thisBlock as IMyGasTank);
-                        break;
-                    case Airlock.ROLE_NAME_HABBAROMETER:
-                        if (!(thisBlock is IMyAirVent))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddHabitatBarometer(thisBlock as IMyAirVent);
-                        break;
-                    case Airlock.ROLE_NAME_VACBAROMETER:
-                        if (!(thisBlock is IMyAirVent))
-                        {
-                            wrongTypeForRole = true;
-                            break;
-                        }
-                        thisAirlock.AddVacuumBarometer(thisBlock as IMyAirVent);
-                        break;
-                    default:
-                        throw new Exception(
-                            $"Failed to parse airlock configuration data because a block's role was not recognized."
-                            + $"\nBlock: {thisBlock.CustomName}"
-                            + $"\nRole: {roleName}"
-                        );
-                } // switch (roleName)
-
-                if (wrongTypeForRole)
-                {
-                    throw new Exception(
-                        $"Failed to parse airlock configuration data because a block is the wrong type for its role."
-                        + $"\nBlock: {thisBlock.CustomName}"
-                        + $"\nRole: {roleName}"
-                    );
-                }
-
-            } // foreach thisBlock
+            this._allAirlocks =
+                new Dictionary<string, Airlock>(Airlock.DiscoverAllAirlocks(
+                    allAirlockBlocks
+                    , this._theIniParser
+                    , INI_SECTION_NAME
+                ));
         }
 
         public void Save()
@@ -181,7 +61,6 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            // report on airlocks and blocks found
             Echo(
                 $"Found {this._allAirlocks.Count().ToString()} airlock(s)."
             );
