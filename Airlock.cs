@@ -38,6 +38,43 @@ namespace IngameScript
             public const string ROLE_NAME_HABBAROMETER = "HabitatBarometer";
             public const string ROLE_NAME_VACBAROMETER = "VacuumBarometer";
 
+            /// <summary>
+            /// The possible modes of operation an Airlock may be in.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// An Airlock in a given mode is not guaranteed to be in exactly
+            /// the state described for that mode. But it should be working to
+            /// get there.
+            /// </para>
+            /// </remarks>
+            public enum Mode
+            {
+                /// <summary>
+                /// Target pressure matches the Habitat. InnerDoors open, OuterDoors locked.
+                /// </summary>
+                OpenToHabitat
+                ,
+                /// <summary>
+                /// Target pressure matches the Vacuum. OuterDoors open, InnerDoors locked.
+                /// </summary>
+                OpenToVacuum
+                ,
+                /// <summary>
+                /// Target pressure 0%, all doors locked.
+                /// </summary>
+                /// <remarks>
+                /// <para>
+                /// This is not normal operation. It's included in case a
+                /// defense-minded engineer wants to be able to trap intruders
+                /// between locked doors with nothing to breathe. And, hey, no
+                /// one said you can't line your airlock chambers with Interior
+                /// Turrets...
+                /// </para>
+                /// </remarks>
+                LockDown
+            }
+
             #endregion Constants, Enums, Statics
 
             #region Basic Properties
@@ -52,6 +89,11 @@ namespace IngameScript
             /// readouts.
             /// </remarks>
             public string Name { get; set; }
+
+            /// <summary>
+            /// The Airlock's current Mode of operation
+            /// </summary>
+            public Mode CurrentMode { get; set; }
 
             private StringBuilder _badConfigReport = new StringBuilder();
             /// <summary>
@@ -337,6 +379,8 @@ namespace IngameScript
                 this._drainTanks = new List<IMyGasTank>();
                 this._habBarometers = new List<IMyAirVent>();
                 this._vacBarometers = new List<IMyAirVent>();
+
+                this.CurrentMode = Mode.OpenToHabitat;
             }
 
             /// <summary>
@@ -346,7 +390,6 @@ namespace IngameScript
             public Airlock(string name) : this()
             {
                 this.Name = name;
-
             }
 
             /// <summary>
@@ -379,6 +422,10 @@ namespace IngameScript
                 if (null == iniParser) iniParser = new MyIni();
                 if (null == iniSectionName) iniSectionName = Program.INI_SECTION_NAME;
 
+                // Note the use of CurrentCulture. Airlock names are expected to
+                // be user-readable, so the code should obey the user's language
+                // rules. But they should still be case-insensitive as that's
+                // probably a common assumption.
                 Dictionary<string, Airlock> foundAirlocks
                     = new Dictionary<string, Airlock>(StringComparer.CurrentCultureIgnoreCase);
 
