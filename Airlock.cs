@@ -39,7 +39,8 @@ namespace IngameScript
             public const string ROLE_NAME_VACBAROMETER = "VacuumBarometer";
 
             /// <summary>
-            /// The possible modes of operation an Airlock may be in.
+            /// The possible modes of operation (i.e., target states) an Airlock
+            /// may be in.
             /// </summary>
             /// <remarks>
             /// <para>
@@ -51,14 +52,16 @@ namespace IngameScript
             public enum Mode
             {
                 /// <summary>
-                /// Target pressure matches the Habitat. InnerDoors open, OuterDoors locked.
+                /// Target pressure matches the Habitat. InnerDoors open,
+                /// OuterDoors locked.
                 /// </summary>
-                OpenToHabitat
+                OpenToHabitat = 1
                 ,
                 /// <summary>
-                /// Target pressure matches the Vacuum. OuterDoors open, InnerDoors locked.
+                /// Target pressure matches the Vacuum. OuterDoors open,
+                /// InnerDoors locked.
                 /// </summary>
-                OpenToVacuum
+                OpenToVacuum = 2
                 ,
                 /// <summary>
                 /// Target pressure 0%, all doors locked.
@@ -72,7 +75,37 @@ namespace IngameScript
                 /// Turrets...
                 /// </para>
                 /// </remarks>
-                LockDown
+                LockDown = 99
+            }
+
+            /// <summary>
+            /// The possible target pressure values for the airlock chamber.
+            /// </summary>
+            public enum PressureTarget
+            {
+                /// <summary>Zero pressure</summary>
+                Empty
+                /// <summary>The same pressure reported by the <see cref="VacuumBarometers"/></summary>
+                , Vacuum
+                /// <summary>The same pressure reported by the <see cref="HabitatBarometers"/></summary>
+                , Habitat
+                /// <summary>100% pressure</summary>
+                , Full
+            }
+
+            /// <summary>
+            /// The possible target states for <see cref="InnerDoors"/> and <see cref="OuterDoors"/>.
+            /// </summary>
+            public enum DoorTarget
+            {
+                /// <summary>Passable and manually operable</summary>
+                Open
+                /// <summary>Passable and NOT manually operable</summary>
+                , LockedOpen
+                /// <summary>Impassable, airtight, and manually operable</summary>
+                , Closed
+                /// <summary>Impassable, airtight, and NOT manually operable</summary>
+                , LockedClosed
             }
 
             #endregion Constants, Enums, Statics
@@ -90,10 +123,47 @@ namespace IngameScript
             /// </remarks>
             public string Name { get; set; }
 
+            private Mode _targetMode;
             /// <summary>
-            /// The Airlock's current Mode of operation
+            /// The Airlock's Mode of operation. It's either there, or it's working toward it.
             /// </summary>
-            public Mode CurrentMode { get; set; }
+            public Mode TargetMode {
+                get { return this._targetMode; }
+                private set { this._targetMode = value; }
+            }
+
+            private PressureTarget? _currentPressureTarget;
+            /// <summary>
+            /// The pressure that the Airlock is currently working toward, or
+            /// <code>null</code> if the current pressure is acceptable.
+            /// </summary>
+            public PressureTarget? CurrentPressureTarget
+            {
+                get { return this._currentPressureTarget; }
+                private set { this._currentPressureTarget = value; }
+            }
+
+            private DoorTarget? _currentInnerDoorsTarget;
+            /// <summary>
+            /// The desired DoorTarget of the <see cref="InnerDoors"/>, or
+            /// <code>null</code> if their current states are acceptable.
+            /// </summary>
+            public DoorTarget? CurrentInnerDoorsTarget
+            {
+                get { return this._currentInnerDoorsTarget; }
+                private set { this._currentInnerDoorsTarget = value; }
+            }
+
+            private DoorTarget? _currentOuterDoorsTarget;
+            /// <summary>
+            /// The desired DoorTarget of the <see cref="OuterDoors"/>, or
+            /// <code>null</code> if their current states are acceptable.
+            /// </summary>
+            public DoorTarget? CurrentOuterDoorsTarget
+            {
+                get { return this._currentOuterDoorsTarget; }
+                private set { this._currentOuterDoorsTarget = value; }
+            }
 
             private StringBuilder _badConfigReport = new StringBuilder();
             /// <summary>
@@ -380,7 +450,10 @@ namespace IngameScript
                 this._habBarometers = new List<IMyAirVent>();
                 this._vacBarometers = new List<IMyAirVent>();
 
-                this.CurrentMode = Mode.OpenToHabitat;
+                this.TargetMode = Mode.OpenToHabitat;
+                this.CurrentPressureTarget = null;
+                this.CurrentInnerDoorsTarget = null;
+                this.CurrentOuterDoorsTarget = null;
             }
 
             /// <summary>
@@ -445,7 +518,7 @@ namespace IngameScript
                     }
 
                     // Parse the airlock name and get a new or existing reference to the airlock
-                    airlockName = iniParser.Get(iniSectionName, INI_AIRLOCK_KEY).ToString();
+                    airlockName = iniParser.Get(iniSectionName, INI_AIRLOCK_KEY).ToString(); // TODO This should not reference Program.INI_AIRLOCK_KEY directly.
                     if (string.IsNullOrEmpty(airlockName))
                     {
                         throw new Exception(
@@ -464,7 +537,7 @@ namespace IngameScript
                         foundAirlocks.Add(airlockName, thisAirlock);
                     }
 
-                    roleName = iniParser.Get(iniSectionName, INI_ROLE_KEY).ToString();
+                    roleName = iniParser.Get(iniSectionName, INI_ROLE_KEY).ToString(); // TODO This should not reference Program.INI_ROLE_KEY directly.
                     if (string.IsNullOrEmpty(roleName))
                     {
                         throw new Exception(
