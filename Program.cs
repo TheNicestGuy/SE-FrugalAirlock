@@ -146,6 +146,7 @@ namespace IngameScript
                 {
                     this._allAirlocks[airlockName] = tempAirlocks[airlockName];
                 }
+                this._allAirlocks[airlockName].SetModeNow(Airlock.Mode.OpenToHabitat);
             }
             else
             {
@@ -156,6 +157,10 @@ namespace IngameScript
                         , this._theIniParser
                         , INI_SECTION_NAME
                     ));
+                foreach (Airlock thisAirlock in this._allAirlocks.Values)
+                {
+                    thisAirlock.SetModeNow(Airlock.Mode.OpenToHabitat);
+                }
             }
 
             ReportStatus();
