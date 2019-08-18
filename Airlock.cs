@@ -125,12 +125,65 @@ namespace IngameScript
 
             private Mode _targetMode;
             /// <summary>
-            /// The Airlock's Mode of operation. It's either there, or it's working toward it.
+            /// The Airlock's Mode of operation. It's either there, or it's
+            /// working toward it.
             /// </summary>
+            /// <remarks>
+            /// <para>
+            /// Setting this will also set <see cref="CurrentPressureTarget"/>,
+            /// <see cref="CurrentInnerDoorsTarget"/>, and <see
+            /// cref="CurrentOuterDoorsTarget"/>.
+            /// </para>
+            /// </remarks>
             public Mode TargetMode {
                 get { return this._targetMode; }
-                private set { this._targetMode = value; }
+                private set {
+                    this._targetMode = value;
+                    switch (this._targetMode)
+                    {
+                        case Mode.OpenToHabitat:
+                            this.CurrentPressureTarget = PressureTarget.Habitat;
+                            this.CurrentInnerDoorsTarget = DoorTarget.Open;
+                            this.CurrentOuterDoorsTarget = DoorTarget.LockedClosed;
+                            break;
+                        case Mode.OpenToVacuum:
+                            this.CurrentPressureTarget = PressureTarget.Vacuum;
+                            this.CurrentInnerDoorsTarget = DoorTarget.LockedClosed;
+                            this.CurrentOuterDoorsTarget = DoorTarget.Open;
+                            break;
+                        case Mode.LockDown:
+                            this.CurrentPressureTarget = PressureTarget.Empty;
+                            this.CurrentInnerDoorsTarget = DoorTarget.LockedClosed;
+                            this.CurrentOuterDoorsTarget = DoorTarget.LockedClosed;
+                            break;
+                        default:
+                            break;
+                    }
+                }
             }
+
+            //private Mode? _queuedMode = null;
+            ///// <summary>
+            ///// The Airlock's next Mode of operation. It will transition to this
+            ///// after <see cref="TargetMode"/> has been reached and at least
+            ///// <see cref="GraceDelaySeconds"/> have passed.
+            ///// </summary>
+            //public Mode? QueuedMode {
+            //    get { return this._queuedMode; }
+            //    private set { this._queuedMode = value; }
+            //}
+
+            //private float _graceDelaySeconds = 0.0;
+            ///// <summary>
+            ///// Minimum seconds that must pass after <see cref="TargetMode"/> is
+            ///// reached before <see cref="QueuedMode"/> becomes the new <see
+            ///// cref="TargetMode"/>.
+            ///// </summary>
+            //public float GraceDelaySeconds
+            //{
+            //    get { return this._graceDelaySeconds; }
+            //    private set { this._graceDelaySeconds = value; }
+            //}
 
             private PressureTarget? _currentPressureTarget;
             /// <summary>
@@ -140,8 +193,14 @@ namespace IngameScript
             public PressureTarget? CurrentPressureTarget
             {
                 get { return this._currentPressureTarget; }
-                private set { this._currentPressureTarget = value; }
+                private set
+                {
+                    this._currentPressureTarget = value;
+                    this.EnableFillVents(); // If something disabled the FillVents, they need to be re-enabled to serve as barometers.
+                }
             }
+
+            private bool IsPressureAtTarget { get; set; }
 
             private DoorTarget? _currentInnerDoorsTarget;
             /// <summary>
@@ -216,7 +275,56 @@ namespace IngameScript
                 this._outerDoors.Add(newDoor);
             }
 
-            //TODO Add methods to manipulate outer doors, like opening, closing, locking
+            /// <summary>
+            /// Enable and open all <see cref="OuterDoors"/>.
+            /// </summary>
+            private void OpenOuterDoors()
+            {
+                foreach (IMyDoor thisDoor in this.OuterDoors)
+                {
+                    thisDoor.Enabled = true;
+                    thisDoor.OpenDoor();
+                }
+            }
+
+            /// <summary>
+            /// Enable and close all <see cref="OuterDoors"/>.
+            /// </summary>
+            private void CloseOuterDoors()
+            {
+                foreach (IMyDoor thisDoor in this.OuterDoors)
+                {
+                    thisDoor.Enabled = true;
+                    thisDoor.CloseDoor();
+                }
+            }
+
+            /// <summary>
+            /// Enable all <see cref="OuterDoors"/>.
+            /// </summary>
+            private void UnlockOuterDoors()
+            {
+                foreach (IMyDoor thisDoor in this.OuterDoors)
+                {
+                    thisDoor.Enabled = true;
+                }
+            }
+
+            /// <summary>
+            /// Disable all <see cref="OuterDoors"/> that are not in the process
+            /// of opening or closing.
+            /// </summary>
+            private void LockOuterDoors()
+            {
+                foreach (IMyDoor thisDoor in this.OuterDoors.Where(d =>
+                    d.Status != DoorStatus.Closing
+                    &&
+                    d.Status != DoorStatus.Opening
+                ))
+                {
+                    thisDoor.Enabled = false;
+                }
+            }
 
             #endregion Mandatory Blocks /  OuterDoors
 
@@ -255,7 +363,56 @@ namespace IngameScript
                 this._innerDoors.Add(newDoor);
             }
 
-            //TODO Add methods to manipulate inner doors, like opening, closing, locking
+            /// <summary>
+            /// Enable and open all <see cref="InnerDoors"/>.
+            /// </summary>
+            private void OpenInnerDoors()
+            {
+                foreach (IMyDoor thisDoor in this.InnerDoors)
+                {
+                    thisDoor.Enabled = true;
+                    thisDoor.OpenDoor();
+                }
+            }
+
+            /// <summary>
+            /// Enable and close all <see cref="InnerDoors"/>.
+            /// </summary>
+            private void CloseInnerDoors()
+            {
+                foreach (IMyDoor thisDoor in this.InnerDoors)
+                {
+                    thisDoor.Enabled = true;
+                    thisDoor.CloseDoor();
+                }
+            }
+
+            /// <summary>
+            /// Enable all <see cref="InnerDoors"/>.
+            /// </summary>
+            private void UnlockInnerDoors()
+            {
+                foreach (IMyDoor thisDoor in this.InnerDoors)
+                {
+                    thisDoor.Enabled = true;
+                }
+            }
+
+            /// <summary>
+            /// Disable all <see cref="InnerDoors"/> that are not in the process
+            /// of opening or closing.
+            /// </summary>
+            private void LockInnerDoors()
+            {
+                foreach (IMyDoor thisDoor in this.InnerDoors.Where(d =>
+                    d.Status != DoorStatus.Closing
+                    &&
+                    d.Status != DoorStatus.Opening
+                ))
+                {
+                    thisDoor.Enabled = false;
+                }
+            }
 
             #endregion Mandatory Blocks /  InnerDoors
 
@@ -288,7 +445,39 @@ namespace IngameScript
                 this._fillVents.Add(newVent);
             }
 
-            //TODO Add methods to manipulate fill vents, like sucking, blowing, shutting off
+            private void EnableFillVents()
+            {
+                foreach (IMyAirVent thisVent in this.FillVents)
+                {
+                    thisVent.Enabled = true;
+                }
+            }
+
+            //private void DisableFillVents()
+            //{
+            //    foreach (IMyAirVent thisVent in this.FillVents)
+            //    {
+            //        thisVent.Enabled = false;
+            //    }
+            //}
+
+            private void PressurizeWithFillVents()
+            {
+                this.EnableFillVents();
+                foreach (IMyAirVent thisVent in this.FillVents)
+                {
+                    thisVent.Depressurize = false;
+                }
+            }
+
+            private void DepressurizeWithFillVents()
+            {
+                this.EnableFillVents();
+                foreach (IMyAirVent thisVent in this.FillVents)
+                {
+                    thisVent.Depressurize = true;
+                }
+            }
 
             #endregion Mandatory Blocks /  FillVents
 
@@ -320,7 +509,39 @@ namespace IngameScript
                 this._drainVents.Add(newVent);
             }
 
-            //TODO Add methods to manipulate drain vents, like sucking, blowing, shutting off
+            private void EnableDrainVents()
+            {
+                foreach (IMyAirVent thisVent in this.DrainVents)
+                {
+                    thisVent.Enabled = true;
+                }
+            }
+
+            private void DisableDrainVents()
+            {
+                foreach (IMyAirVent thisVent in this.DrainVents)
+                {
+                    thisVent.Enabled = false;
+                }
+            }
+
+            private void PressurizeWithDrainVents()
+            {
+                this.EnableDrainVents();
+                foreach (IMyAirVent thisVent in this.DrainVents)
+                {
+                    thisVent.Depressurize = false;
+                }
+            }
+
+            private void DepressurizeWithDrainVents()
+            {
+                this.EnableDrainVents();
+                foreach (IMyAirVent thisVent in this.DrainVents)
+                {
+                    thisVent.Depressurize = true;
+                }
+            }
 
             #endregion Mandatory Blocks /  DrainVents
 
@@ -629,7 +850,7 @@ namespace IngameScript
 
             #endregion Constructors and Factory Methods
 
-            #region Instance Methods
+            #region Instance Methods / Utility
 
             /// <summary>
             /// Tests whether this airlock has all the components needed to
@@ -711,7 +932,277 @@ namespace IngameScript
                 return allGood;
             }
 
-            #endregion Instance Methods
+            public void SetModeNow(Mode newMode)
+            {
+                this.TargetMode = newMode;
+                //this.QueuedMode = null;
+                //this.GraceDelaySeconds = 0.0;
+            }
+
+            //public void QueueMode(Mode newMode, float graceDelaySeconds)
+            //{
+
+            //}
+
+            #endregion Instance Methods / Utility
+
+            #region State and Automation
+
+            private float? _vacuumPressure = null;
+            private float VacuumPressure
+            {
+                get
+                {
+                    if (null != this._vacuumPressure) { return this._vacuumPressure.Value; }
+                    foreach (IMyAirVent thisVent in this.VacuumBarometers)
+                    {
+                        if (thisVent.IsWorking)
+                        {
+                            this._vacuumPressure = thisVent.GetOxygenLevel();
+                            break;
+                        }
+                    }
+                    if (null == this._vacuumPressure)
+                    {
+                        throw new Exception("Vacuum pressure cannot be read because there are no working barometers in the vacuum.");
+                    }
+                    return this._vacuumPressure.Value;
+                }
+            }
+
+            private float? _habitatPressure = null;
+            private float HabitatPressure
+            {
+                get
+                {
+                    if (null != this._habitatPressure) { return this._habitatPressure.Value; }
+                    foreach (IMyAirVent thisVent in this.HabitatBarometers)
+                    {
+                        if (thisVent.IsWorking)
+                        {
+                            this._habitatPressure = thisVent.GetOxygenLevel();
+                            break;
+                        }
+                    }
+                    if (null == this._habitatPressure)
+                    {
+                        throw new Exception("Habitat pressure cannot be read because there are no working barometers in the habitat.");
+                    }
+                    return this._habitatPressure.Value;
+                }
+            }
+
+            private float? _chamberPressure = null;
+            private float ChamberPressure
+            {
+                get
+                {
+                    if (null != this._chamberPressure) { return this._chamberPressure.Value; }
+                    foreach (IMyAirVent thisVent in this.FillVents)
+                    {
+                        if (thisVent.IsWorking)
+                        {
+                            this._chamberPressure = thisVent.GetOxygenLevel();
+                            break;
+                        }
+                    }
+                    if (null == this._chamberPressure)
+                    {
+                        throw new Exception("Chamber pressure cannot be read because there are no working fill vents.");
+                    }
+                    return this._chamberPressure.Value;
+                }
+            }
+
+            private float? PreviousChamberPressure { get; set; }
+
+            private bool IsChamberReallyDraining
+            {
+                get
+                {
+                    if (null == this.PreviousChamberPressure)
+                    {
+                        // Can't tell yet. Might as well say yes for now.
+                        return true;
+                    }
+                    // The chamber is really draining if the pressure decreased by
+                    // at least 0.01% since the last call to Update().
+                    return (this.ChamberPressure - this.PreviousChamberPressure < -0.0001f);
+                }
+            }
+
+            private bool IsChamberReallyFilling
+            {
+                get
+                {
+                    if (null == this.PreviousChamberPressure)
+                    {
+                        // Can't tell yet. Might as well say yes for now.
+                        return true;
+                    }
+                    // The chamber is really filling if the pressure increased by
+                    // at least 0.01% since the last call to Update().
+                    return (this.ChamberPressure - this.PreviousChamberPressure > 0.0001f);
+                }
+            }
+
+            /// <summary>
+            /// Evaluates the airlock's present state, compares it to the target
+            /// state, and updates the settings of components.
+            /// </summary>
+            public void Update()
+            {
+                // Clear all component readings. This way, they will be re-read
+                // each time Update() is called, but if they are needed in
+                // between, the old readings will be considered good.
+                this._vacuumPressure = null;
+                this._chamberPressure = null;
+                this._habitatPressure = null;
+
+                this.IsPressureAtTarget = false;
+
+                switch (this.CurrentPressureTarget)
+                {
+                    case PressureTarget.Empty:
+                        if (this.ChamberPressure > 0.0f)
+                        {
+                            this.DrainChamber();
+                        }
+                        else // chamber already empty
+                        {
+                            this.IsPressureAtTarget = true;
+                            this.DisableDrainVents();
+                            // Don't disable FillVents. They should no
+                            // longer change the pressure, and they may be
+                            // needed as barometers.
+                        }
+                        break;
+                    case PressureTarget.Full:
+                        if (this.ChamberPressure < 1.0f)
+                        {
+                            this.FillChamber();
+                        }
+                        else // chamber already full
+                        {
+                            this.IsPressureAtTarget = true;
+                            this.DisableDrainVents();
+                            // Don't disable FillVents. They should no
+                            // longer change the pressure, and they may be
+                            // needed as barometers.
+                        }
+                        break;
+                    case PressureTarget.Habitat:
+                        float underPressure = this.HabitatPressure - this.ChamberPressure;
+                        if (underPressure > 0.0001f) // chamber pressure too low
+                        {
+                            this.FillChamber();
+                        }
+                        else if (underPressure < -0.0001f) // chamber pressure too high
+                        {
+                            this.DrainChamber();
+                        }
+                        else // chamber already matches habitat
+                        {
+                            this.IsPressureAtTarget = true;
+                            this.DisableDrainVents();
+                            //this.DisableFillVents();
+                        }
+                        break;
+                    case PressureTarget.Vacuum:
+                        float overPressure = this.ChamberPressure - this.VacuumPressure;
+                        if (overPressure > 0.0001f) // chamber pressure too high
+                        {
+                            this.DrainChamber();
+                        }
+                        else if (overPressure < -0.0001f) // chamber pressure too low
+                        {
+                            this.FillChamber();
+                        }
+                        else // chamber already matches vacuum
+                        {
+                            this.IsPressureAtTarget = true;
+                            this.DisableDrainVents();
+                            //this.DisableFillVents();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                this.PreviousChamberPressure = this.ChamberPressure;
+
+                switch (this.CurrentInnerDoorsTarget)
+                {
+                    case DoorTarget.Closed:
+                        this.CloseInnerDoors();
+                        break;
+                    case DoorTarget.LockedClosed:
+                        this.CloseInnerDoors();
+                        this.LockInnerDoors();
+                        break;
+                    case DoorTarget.LockedOpen:
+                        if (this.IsPressureAtTarget)
+                        {
+                            this.OpenInnerDoors();
+                            this.LockInnerDoors();
+                        }
+                        break;
+                    case DoorTarget.Open:
+                        if (this.IsPressureAtTarget)
+                        {
+                            this.OpenInnerDoors();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                switch (this.CurrentOuterDoorsTarget)
+                {
+                    case DoorTarget.Closed:
+                        this.CloseOuterDoors();
+                        break;
+                    case DoorTarget.LockedClosed:
+                        this.CloseOuterDoors();
+                        this.LockOuterDoors();
+                        break;
+                    case DoorTarget.LockedOpen:
+                        if (this.IsPressureAtTarget)
+                        {
+                            this.OpenOuterDoors();
+                            this.LockOuterDoors();
+                        }
+                        break;
+                    case DoorTarget.Open:
+                        if (this.IsPressureAtTarget)
+                        {
+                            this.OpenOuterDoors();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            private void DrainChamber()
+            {
+                this.DisableDrainVents();
+                this.DepressurizeWithFillVents();
+                if (!this.IsChamberReallyDraining)
+                {
+                    this.DepressurizeWithDrainVents();
+                }
+            }
+
+            private void FillChamber()
+            {
+                this.PressurizeWithDrainVents();
+                if (!this.IsChamberReallyFilling)
+                {
+                    this.PressurizeWithFillVents();
+                }
+            }
+
+            #endregion State and Automation
         }
     }
 }
