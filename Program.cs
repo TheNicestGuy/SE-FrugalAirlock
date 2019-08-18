@@ -40,8 +40,8 @@ namespace IngameScript
         private const string INI_SECTION_NAME = "TNGFrugalAirlock";
         private const string INI_AIRLOCK_KEY = "Airlock";
         private const string INI_ROLE_KEY = "Role";
-        private const UpdateFrequency MAIN_LOOP_FREQUENCY = UpdateFrequency.Update1;
-        private const UpdateType MAIN_LOOP_TYPE = UpdateType.Update1;
+        private const UpdateFrequency MAIN_LOOP_FREQUENCY = UpdateFrequency.Update10;
+        private const UpdateType MAIN_LOOP_TYPE = UpdateType.Update10;
 
         #endregion Program / Constants
 
