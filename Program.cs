@@ -40,6 +40,7 @@ namespace IngameScript
         private const string INI_SECTION_NAME = "TNGFrugalAirlock";
         private const string INI_AIRLOCK_KEY = "Airlock";
         private const string INI_ROLE_KEY = "Role";
+        // WARNING: Do not set the main loop to Update1 (every tick). This causes weird bugs.
         private const UpdateFrequency MAIN_LOOP_FREQUENCY = UpdateFrequency.Update10;
         private const UpdateType MAIN_LOOP_TYPE = UpdateType.Update10;
 

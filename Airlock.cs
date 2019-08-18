@@ -200,6 +200,16 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Returns <code>true</code> if the chamber's pressure is correct
+            /// for <see cref="CurrentPressureTarget"/>.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This is manually set as pressure is evaluated during the update
+            /// loop. The property itself takes no readings.
+            /// </para>
+            /// </remarks>
             private bool IsPressureAtTarget { get; set; }
 
             private DoorTarget? _currentInnerDoorsTarget;
@@ -445,6 +455,18 @@ namespace IngameScript
                 this._fillVents.Add(newVent);
             }
 
+            /// <summary>
+            /// Ensures that all <see cref="FillVents"/> are <see
+            /// cref="IMyFunctionalBlock.Enabled"/>.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// FillVents should never become disabled during the normal course
+            /// of airlock operation. This is called at key moments as a
+            /// precaution, as the FillVents are crucial as barometers for the
+            /// chamber. If they get turned off, lots of stuff breaks.
+            /// </para>
+            /// </remarks>
             private void EnableFillVents()
             {
                 foreach (IMyAirVent thisVent in this.FillVents)
@@ -453,6 +475,7 @@ namespace IngameScript
                 }
             }
 
+            // Never disable the FillVents. Learned that the hard way.
             //private void DisableFillVents()
             //{
             //    foreach (IMyAirVent thisVent in this.FillVents)
@@ -461,6 +484,10 @@ namespace IngameScript
             //    }
             //}
 
+            /// <summary>
+            /// Set all <see cref="FillVents"/> to pressurize the chamber. Does
+            /// nothing to <see cref="DrainVents"/>.
+            /// </summary>
             private void PressurizeWithFillVents()
             {
                 this.EnableFillVents();
@@ -470,6 +497,10 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Set all <see cref="FillVents"/> to depressurize the chamber.
+            /// Does nothing to <see cref="DrainVents"/>.
+            /// </summary>
             private void DepressurizeWithFillVents()
             {
                 this.EnableFillVents();
@@ -509,6 +540,10 @@ namespace IngameScript
                 this._drainVents.Add(newVent);
             }
 
+            /// <summary>
+            /// Ensures that all <see cref="DrainVents"/> are <see
+            /// cref="IMyFunctionalBlock.Enabled"/>.
+            /// </summary>
             private void EnableDrainVents()
             {
                 foreach (IMyAirVent thisVent in this.DrainVents)
@@ -517,6 +552,14 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Disables all <see cref="DrainVents"/>.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This is more a power-saving measure than anything else.
+            /// </para>
+            /// </remarks>
             private void DisableDrainVents()
             {
                 foreach (IMyAirVent thisVent in this.DrainVents)
@@ -525,6 +568,10 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Set all <see cref="DrainVents"/> to pressurize the chamber. Does
+            /// nothing to <see cref="FillVents"/>.
+            /// </summary>
             private void PressurizeWithDrainVents()
             {
                 this.EnableDrainVents();
@@ -534,6 +581,10 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Set all <see cref="DrainVents"/> to depressurize the chamber.
+            /// Does nothing to <see cref="FillVents"/>.
+            /// </summary>
             private void DepressurizeWithDrainVents()
             {
                 this.EnableDrainVents();
@@ -595,10 +646,10 @@ namespace IngameScript
             /// read the habitat's oxygen pressure.
             /// </summary>
             /// <remarks>
-            /// <para>It should not matter whether these vents are dedicated
-            /// to the airlock or part of the main life support system. There
-            /// can be any number of vents in the collection, but the pressure
-            /// will only ever be read from the first one.</para>
+            /// <para>It should not matter whether these vents are dedicated to
+            /// the airlock or part of the main life support system. There can
+            /// be any number of vents in the collection, but the pressure will
+            /// only ever be read from the first one found to be working.</para>
             /// <para>The returned collection is immutable, though the vents
             /// themselves can be manipulated by reference.</para>
             /// </remarks>
@@ -634,7 +685,7 @@ namespace IngameScript
             /// all oxygen supplies and mostly non-functional, as they are used
             /// ONLY for reading pressure. There can be any number of vents in
             /// the collection, but the pressure will only ever be read from the
-            /// first one.</para>
+            /// first one found to be working.</para>
             /// <para>The returned collection is immutable, though the vents
             /// themselves can be manipulated by reference.</para>
             /// </remarks>
@@ -680,7 +731,7 @@ namespace IngameScript
             /// <summary>
             /// Create a new instance of the Airlock class with a given name.
             /// </summary>
-            /// <param name="name"></param>
+            /// <param name="name"><see cref="Name"/> of the airlock</param>
             public Airlock(string name) : this()
             {
                 this.Name = name;
@@ -932,6 +983,10 @@ namespace IngameScript
                 return allGood;
             }
 
+            /// <summary>
+            /// Immediately changes the airlock's <see cref="TargetMode"/>.
+            /// </summary>
+            /// <param name="newMode">The new Mode</param>
             public void SetModeNow(Mode newMode)
             {
                 this.TargetMode = newMode;
@@ -949,6 +1004,21 @@ namespace IngameScript
             #region State and Automation
 
             private float? _vacuumPressure = null;
+            /// <summary>
+            /// The current pressure in the Vacuum zone.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This property does take a direct reading from the <see
+            /// cref="VacuumBarometers"/>, but only once per call to <see
+            /// cref="Update"/>. Until Update is called again, the reading is
+            /// reused.
+            /// </para>
+            /// <para>
+            /// If a reading is needed, and no working barometer is found, this
+            /// will throw an Exception.
+            /// </para>
+            /// </remarks>
             private float VacuumPressure
             {
                 get
@@ -971,6 +1041,21 @@ namespace IngameScript
             }
 
             private float? _habitatPressure = null;
+            /// <summary>
+            /// The current pressure in the Habitat zone.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This property does take a direct reading from the <see
+            /// cref="HabitatBarometers"/>, but only once per call to <see
+            /// cref="Update"/>. Until Update is called again, the reading is
+            /// reused.
+            /// </para>
+            /// <para>
+            /// If a reading is needed, and no working barometer is found, this
+            /// will throw an Exception.
+            /// </para>
+            /// </remarks>
             private float HabitatPressure
             {
                 get
@@ -993,6 +1078,21 @@ namespace IngameScript
             }
 
             private float? _chamberPressure = null;
+            /// <summary>
+            /// The current pressure in the airlock chamber.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This property does take a direct reading from the <see
+            /// cref="FillVents"/>, but only once per call to <see
+            /// cref="Update"/>. Until Update is called again, the reading is
+            /// reused.
+            /// </para>
+            /// <para>
+            /// If a reading is needed, and no working vent is found, this
+            /// will throw an Exception.
+            /// </para>
+            /// </remarks>
             private float ChamberPressure
             {
                 get
@@ -1014,8 +1114,19 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// The <see cref="ChamberPressure"/> reading from the last time
+            /// <see cref="Update"/> was called, or <code>null</code> if it
+            /// never has been.
+            /// </summary>
             private float? PreviousChamberPressure { get; set; }
 
+            /// <summary>
+            /// Returns <code>true</code> if the airlock chamber is actively
+            /// changing pressure downward, based on a comparison of <see
+            /// cref="ChamberPressure"/> and <see
+            /// cref="PreviousChamberPressure"/>.
+            /// </summary>
             private bool IsChamberReallyDraining
             {
                 get
@@ -1031,6 +1142,12 @@ namespace IngameScript
                 }
             }
 
+            /// <summary>
+            /// Returns <code>true</code> if the airlock chamber is actively
+            /// changing pressure upward, based on a comparison of <see
+            /// cref="ChamberPressure"/> and <see
+            /// cref="PreviousChamberPressure"/>.
+            /// </summary>
             private bool IsChamberReallyFilling
             {
                 get
