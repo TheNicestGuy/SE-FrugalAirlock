@@ -40,13 +40,18 @@ namespace IngameScript
         private const string INI_SECTION_NAME = "TNGFrugalAirlock";
         private const string INI_AIRLOCK_KEY = "Airlock";
         private const string INI_ROLE_KEY = "Role";
+        private const UpdateFrequency MAIN_LOOP_FREQUENCY = UpdateFrequency.Update1;
+        private const UpdateType MAIN_LOOP_TYPE = UpdateType.Update1;
 
         #endregion Program / Constants
 
         public Program()
         {
+            this.Runtime.UpdateFrequency = MAIN_LOOP_FREQUENCY;
+
             // Map known commands to methods
             this._knownCommands["rediscover"] = RediscoverCommand;
+            this._knownCommands["forcemode"] = ForceModeCommand;
 
             // Perform initial discovery
             this.RediscoverCommand(true);
@@ -58,33 +63,45 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            bool defaultRun = true;
-
-            if (this._theCommandParser.TryParse(argument))
+            // This looks like an automatic call for the main loop.
+            if ((updateSource & (MAIN_LOOP_TYPE)) != 0)
             {
-                Action commandAction;
-                if (this._theCommandParser.ArgumentCount > 0)
+                foreach (Airlock thisAirlock in this._allAirlocks.Values)
                 {
-                    string commandName = this._theCommandParser.Argument(0);
-                    if (null != commandName)
-                    {
-                        defaultRun = false;
-                        if (this._knownCommands.TryGetValue(commandName, out commandAction))
-                        {
-                            commandAction();
-                        }
-                        else
-                        {
-                            throw new Exception(
-                                $"Command '{commandName}' does not exist."
-                            );
-                        }
-                    } // check and map command name
-                } // if arguments existed
-            } // if could parse command line
+                    thisAirlock.Update();
+                }
+            }
 
-            if (defaultRun) {
-                ReportStatus();
+            // This is NOT an automatic call. Run it through the CLI.
+            if ((updateSource & (
+                UpdateType.Update1 | UpdateType.Update10 | UpdateType.Update100
+            )) == 0)
+            {
+                if (this._theCommandParser.TryParse(argument))
+                {
+                    Action commandAction;
+                    if (this._theCommandParser.ArgumentCount > 0)
+                    {
+                        string commandName = this._theCommandParser.Argument(0);
+                        if (null != commandName)
+                        {
+                            if (this._knownCommands.TryGetValue(commandName, out commandAction))
+                            {
+                                commandAction();
+                            }
+                            else
+                            {
+                                throw new Exception(
+                                    $"Command '{commandName}' does not exist."
+                                );
+                            }
+                        } // check and map command name
+                    } // if arguments existed
+                } // if could parse command line
+                else
+                {
+                    Echo("Program was run with no argument, and not by itself. Doing nothing.");
+                }
             }
         } // Main()
 
@@ -143,6 +160,52 @@ namespace IngameScript
 
             ReportStatus();
         } // RediscoverCommand(bool forceAll)
+
+        private void ForceModeCommand()
+        {
+            if (this._theCommandParser.ArgumentCount < 3)
+            {
+                throw new Exception(
+                    "Invalid syntax for the forcemode command."
+                    + $"\nInput: {this._theCommandParser.ToString()}"
+                    + "\nUsage: forcemode mode airlockname"
+                );
+            }
+
+            Airlock.Mode targetMode;
+            if (!Enum.TryParse<Airlock.Mode>(this._theCommandParser.Argument(1), out targetMode))
+            {
+                throw new Exception(
+                    "Invalid syntax for the forcemode command."
+                    + $"\n'{this._theCommandParser.Argument(1)}' is not a valid airlock mode."
+                );
+            }
+
+            Airlock theAirlock;
+            if (
+                !this._allAirlocks.TryGetValue(this._theCommandParser.Argument(2), out theAirlock)
+                ||
+                null == theAirlock
+            )
+            {
+                throw new Exception(
+                    "Cannot complete the forcemode command."
+                    + $"\nNo airlock named '{this._theCommandParser.Argument(2)}' was found. Try a rediscover command?"
+                );
+            }
+
+            if (!theAirlock.IsComplete())
+            {
+                throw new Exception(
+                    "Cannot complete the forcemode command."
+                    + $"\nThe airlock named '{this._theCommandParser.Argument(2)}' is not completely functional."
+                    + $"\nDetails: {theAirlock.BadConfigReport}"
+                );
+            }
+
+            theAirlock.SetModeNow(targetMode);
+
+        } //ForceModeCommand()
 
         #endregion Command Implemenations
     }
