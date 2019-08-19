@@ -53,6 +53,7 @@ namespace IngameScript
             // Map known commands to methods
             this._knownCommands["rediscover"] = RediscoverCommand;
             this._knownCommands["forcemode"] = ForceModeCommand;
+            this._knownCommands["queuemode"] = QueueModeCommand;
 
             // Perform initial discovery
             this.RediscoverCommand(true);
@@ -179,7 +180,7 @@ namespace IngameScript
             }
 
             Airlock.Mode targetMode;
-            if (!Enum.TryParse<Airlock.Mode>(this._theCommandParser.Argument(1), out targetMode))
+            if (!Enum.TryParse<Airlock.Mode>(this._theCommandParser.Argument(1), true, out targetMode))
             {
                 throw new Exception(
                     "Invalid syntax for the forcemode command."
@@ -212,6 +213,64 @@ namespace IngameScript
             theAirlock.SetModeNow(targetMode);
 
         } //ForceModeCommand()
+
+        private void QueueModeCommand()
+        {
+            if (this._theCommandParser.ArgumentCount < 3)
+            {
+                throw new Exception(
+                    "Invalid syntax for the queuemode command."
+                    + $"\nInput: {this._theCommandParser.ToString()}"
+                    + "\nUsage: queuemode mode airlockname [gracedelay] [-cutinline]"
+                );
+            }
+            
+            Airlock.Mode newMode;
+            if (!Enum.TryParse<Airlock.Mode>(this._theCommandParser.Argument(1), true, out newMode))
+            {
+                throw new Exception(
+                    "Invalid syntax for the queuemode command."
+                    + $"\n'{this._theCommandParser.Argument(1)}' is not a valid airlock mode."
+                );
+            }
+
+            Airlock theAirlock;
+            if (
+                !this._allAirlocks.TryGetValue(this._theCommandParser.Argument(2), out theAirlock)
+                ||
+                null == theAirlock
+            )
+            {
+                throw new Exception(
+                    "Cannot complete the queuemode command."
+                    + $"\nNo airlock named '{this._theCommandParser.Argument(2)}' was found. Try a rediscover command?"
+                );
+            }
+
+            if (!this._theCommandParser.Switch("cutinline") && theAirlock.QueuedMode.HasValue)
+            {
+                // Command did not ask to cut in line, so leave the existing QueuedMode alone.
+                Echo(
+                    $"queuemode command did nothing. A mode is already queued for '{theAirlock.Name}', and the '-cutinline' switch was not used."
+                );
+                return;
+            }
+
+            double graceDelaySeconds = 0.0;
+            if (
+                this._theCommandParser.ArgumentCount == 4
+                &&
+                !Double.TryParse(this._theCommandParser.Argument(3), out graceDelaySeconds)
+            )
+            {
+                throw new Exception(
+                   "Cannot complete the queuemode command."
+                   + $"\nThe gracedelay argument must be a number. '{this._theCommandParser.Argument(3)}' was given."
+               );
+            }
+
+            theAirlock.QueueMode(newMode, graceDelaySeconds);
+        } //QueueModeCommand()
 
         #endregion Command Implemenations
     }

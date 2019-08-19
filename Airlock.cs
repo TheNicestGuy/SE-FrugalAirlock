@@ -159,31 +159,24 @@ namespace IngameScript
                         default:
                             break;
                     }
+                    this._lastTransitionEnded = DateTime.MinValue;
                 }
             }
 
-            //private Mode? _queuedMode = null;
-            ///// <summary>
-            ///// The Airlock's next Mode of operation. It will transition to this
-            ///// after <see cref="TargetMode"/> has been reached and at least
-            ///// <see cref="GraceDelaySeconds"/> have passed.
-            ///// </summary>
-            //public Mode? QueuedMode {
-            //    get { return this._queuedMode; }
-            //    private set { this._queuedMode = value; }
-            //}
+            private Mode? _queuedMode = null;
+            /// <summary>
+            /// The Airlock's next Mode of operation. It will transition to this
+            /// after <see cref="TargetMode"/> has been reached and enough time
+            /// has passed.
+            /// </summary>
+            public Mode? QueuedMode
+            {
+                get { return this._queuedMode; }
+                private set { this._queuedMode = value; }
+            }
 
-            //private float _graceDelaySeconds = 0.0;
-            ///// <summary>
-            ///// Minimum seconds that must pass after <see cref="TargetMode"/> is
-            ///// reached before <see cref="QueuedMode"/> becomes the new <see
-            ///// cref="TargetMode"/>.
-            ///// </summary>
-            //public float GraceDelaySeconds
-            //{
-            //    get { return this._graceDelaySeconds; }
-            //    private set { this._graceDelaySeconds = value; }
-            //}
+            private DateTime _lastTransitionEnded = DateTime.MinValue;
+            private DateTime _doNotTransitionBefore = DateTime.MinValue;
 
             private PressureTarget? _currentPressureTarget;
             /// <summary>
@@ -990,14 +983,53 @@ namespace IngameScript
             public void SetModeNow(Mode newMode)
             {
                 this.TargetMode = newMode;
-                //this.QueuedMode = null;
-                //this.GraceDelaySeconds = 0.0;
+                this.QueuedMode = null;
+                this._doNotTransitionBefore = DateTime.MinValue;
             }
 
-            //public void QueueMode(Mode newMode, float graceDelaySeconds)
-            //{
+            /// <summary>
+            /// Specifies the Airlock's next Mode to transition to once the <see
+            /// cref="TargetMode"/> is reached.
+            /// </summary>
+            /// <param name="newMode">The next Mode</param>
+            /// <param name="graceDelaySeconds">Minimum seconds that must pass
+            /// between ending the transition to the old <see
+            /// cref="TargetMode"/> and beginning the transition to the next
+            /// Mode</param>
+            /// <remarks>
+            /// <para>
+            /// If <paramref name="newMode"/> matches <see cref="TargetMode"/>,
+            /// then QueueMode does nothing.
+            /// </para>
+            /// <para>
+            /// If the Airlock has already reached <see cref="TargetMode"/>
+            /// (i.e., it's standing by), <paramref name="graceDelaySeconds"/>
+            /// will still be enforced. If the time has also already elapsed,
+            /// then QueueMode behaves exactly the same as <see
+            /// cref="SetModeNow(Mode)"/>.
+            /// </para>
+            /// <para>
+            /// If there is already a next mode queued, QueueMode will override
+            /// and discard it. Only one transition can be queued.
+            /// </para>
+            /// </remarks>
+            public void QueueMode(Mode newMode, double graceDelaySeconds)
+            {
+                if (this.TargetMode == newMode) return;
+                if (graceDelaySeconds < 0.0)
+                {
+                    throw new ArgumentException(
+                        "Cannot call QueueMode with a negative value for graceDelaySeconds."
+                    );
+                }
 
-            //}
+                this.QueuedMode = newMode;
+                if (this._lastTransitionEnded != DateTime.MinValue)
+                {
+                    this._doNotTransitionBefore =
+                        this._lastTransitionEnded.AddSeconds(graceDelaySeconds);
+                }
+            }
 
             #endregion Instance Methods / Utility
 
@@ -1178,12 +1210,15 @@ namespace IngameScript
 
                 this.IsPressureAtTarget = false;
 
+                bool isTotalStandby = true;
+
                 switch (this.CurrentPressureTarget)
                 {
                     case PressureTarget.Empty:
                         if (this.ChamberPressure > 0.0f)
                         {
                             this.DrainChamber();
+                            isTotalStandby = false;
                         }
                         else // chamber already empty
                         {
@@ -1198,6 +1233,7 @@ namespace IngameScript
                         if (this.ChamberPressure < 1.0f)
                         {
                             this.FillChamber();
+                            isTotalStandby = false;
                         }
                         else // chamber already full
                         {
@@ -1213,10 +1249,12 @@ namespace IngameScript
                         if (underPressure > 0.0001f) // chamber pressure too low
                         {
                             this.FillChamber();
+                            isTotalStandby = false;
                         }
                         else if (underPressure < -0.0001f) // chamber pressure too high
                         {
                             this.DrainChamber();
+                            isTotalStandby = false;
                         }
                         else // chamber already matches habitat
                         {
@@ -1230,10 +1268,12 @@ namespace IngameScript
                         if (overPressure > 0.0001f) // chamber pressure too high
                         {
                             this.DrainChamber();
+                            isTotalStandby = false;
                         }
                         else if (overPressure < -0.0001f) // chamber pressure too low
                         {
                             this.FillChamber();
+                            isTotalStandby = false;
                         }
                         else // chamber already matches vacuum
                         {
@@ -1297,6 +1337,34 @@ namespace IngameScript
                         break;
                     default:
                         break;
+                }
+
+                if (
+                    this.InnerDoors.Concat(this.OuterDoors).Any(d =>
+                        d.Status == DoorStatus.Closing
+                        ||
+                        d.Status == DoorStatus.Opening
+                    )
+                )
+                {
+                    isTotalStandby = false;
+                }
+
+                if (
+                    isTotalStandby
+                    &&
+                    this.QueuedMode.HasValue
+                    &&
+                    DateTime.Now > this._doNotTransitionBefore
+                )
+                {
+                    this.TargetMode = this.QueuedMode.Value;
+                    this.QueuedMode = null;
+                    this._doNotTransitionBefore = DateTime.MinValue;
+                }
+                if (isTotalStandby && this._lastTransitionEnded == DateTime.MinValue)
+                {
+                    this._lastTransitionEnded = DateTime.Now;
                 }
             }
 
