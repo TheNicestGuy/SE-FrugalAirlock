@@ -37,6 +37,7 @@ namespace IngameScript
             public const string ROLE_NAME_DRAINTANK = "DrainTank";
             public const string ROLE_NAME_HABBAROMETER = "HabitatBarometer";
             public const string ROLE_NAME_VACBAROMETER = "VacuumBarometer";
+            public const string ROLE_NAME_PRESSURELIGHT = "PressureLight";
 
             /// <summary>
             /// The possible modes of operation (i.e., target states) an Airlock
@@ -108,6 +109,12 @@ namespace IngameScript
                 , LockedClosed
             }
 
+            private readonly Color COLOR_SAFE = Color.Green;
+            private readonly Color COLOR_UNSAFE = Color.Red;
+            private readonly Color COLOR_TRANSITION = Color.Yellow;
+            private const float TRANSITION_BLINK_INTERVAL_SECONDS = 0.25f;
+            private const float TRANSITION_BLINK_LENGTH = 50.0f;
+
             #endregion Constants, Enums, Statics
 
             #region Basic Properties
@@ -160,6 +167,7 @@ namespace IngameScript
                             break;
                     }
                     this._lastTransitionEnded = DateTime.MinValue;
+                    this.SetPressureLightsTransition();
                 }
             }
 
@@ -703,6 +711,86 @@ namespace IngameScript
 
             #endregion Mandatory Blocks
 
+            #region Optional Blocks
+
+            #region Optional Blocks / PressureLights
+
+            private readonly IList<IMyLightingBlock> _pressureLights;
+            /// <summary>
+            /// Returns references to all of this airlock's lights that indicate
+            /// chamber pressure.
+            /// </summary>
+            /// <remarks>
+            /// <para>The returned collection is immutable, though the lights
+            /// themselves can be manipulated by reference.</para>
+            /// </remarks>
+            public IEnumerable<IMyLightingBlock> PressureLights
+            {
+                get
+                {
+                    return new List<IMyLightingBlock>(_pressureLights);
+                }
+            }
+
+            private void AddPressureLight(IMyLightingBlock newLight)
+            {
+                if (null == newLight) throw new ArgumentNullException("newLight");
+                this._pressureLights.Add(newLight);
+            }
+
+            private void SetPressureLights(
+                Color newColor
+                , float newBlinkIntervalSeconds
+                , float newBlinkLength
+            )
+            {
+                if (null == newColor) throw new ArgumentNullException("newColor");
+                //if (newBlinkLength < 0.0f || newBlinkLength > 1.0f)
+                //{
+                //    throw new ArgumentException("newBlinkLength must be between 0 and 1.", "newBlinkLength");
+                //}
+                foreach (IMyLightingBlock thisLight in this.PressureLights)
+                {
+                    if (thisLight.Color != newColor)
+                        thisLight.Color = newColor;
+                    if (
+                        thisLight.BlinkIntervalSeconds - newBlinkIntervalSeconds > 0.001f
+                        ||
+                        thisLight.BlinkIntervalSeconds - newBlinkIntervalSeconds < -0.001f
+                    )
+                        thisLight.BlinkIntervalSeconds = newBlinkIntervalSeconds;
+                    if (
+                        thisLight.BlinkLength - newBlinkLength > 0.001f
+                        ||
+                        thisLight.BlinkLength - newBlinkLength < -0.001f
+                    )
+                        thisLight.BlinkLength = newBlinkLength;
+                }
+            }
+
+            private void SetPressureLightsLow()
+            {
+                this.SetPressureLights(COLOR_UNSAFE, 0.0f, 50.0f);
+            }
+
+            private void SetPressureLightsHigh()
+            {
+                this.SetPressureLights(COLOR_SAFE, 0.0f, 50.0f);
+            }
+
+            private void SetPressureLightsTransition()
+            {
+                this.SetPressureLights(
+                    COLOR_TRANSITION
+                    , TRANSITION_BLINK_INTERVAL_SECONDS
+                    , TRANSITION_BLINK_LENGTH
+                );
+            }
+
+            #endregion Optional Blocks / PressureLights
+
+            #endregion Optional Blocks
+
             #region Constructors and Factory Methods
 
             private Airlock()
@@ -714,6 +802,8 @@ namespace IngameScript
                 this._drainTanks = new List<IMyGasTank>();
                 this._habBarometers = new List<IMyAirVent>();
                 this._vacBarometers = new List<IMyAirVent>();
+
+                this._pressureLights = new List<IMyLightingBlock>();
 
                 this.TargetMode = Mode.OpenToHabitat;
                 this.CurrentPressureTarget = null;
@@ -869,6 +959,14 @@ namespace IngameScript
                                 break;
                             }
                             thisAirlock.AddVacuumBarometer(thisBlock as IMyAirVent);
+                            break;
+                        case Airlock.ROLE_NAME_PRESSURELIGHT:
+                            if (!(thisBlock is IMyLightingBlock))
+                            {
+                                wrongTypeForRole = true;
+                                break;
+                            }
+                            thisAirlock.AddPressureLight(thisBlock as IMyLightingBlock);
                             break;
                         default:
                             throw new Exception(
@@ -1227,6 +1325,7 @@ namespace IngameScript
                             // Don't disable FillVents. They should no
                             // longer change the pressure, and they may be
                             // needed as barometers.
+                            this.SetPressureLightsLow();
                         }
                         break;
                     case PressureTarget.Full:
@@ -1242,6 +1341,7 @@ namespace IngameScript
                             // Don't disable FillVents. They should no
                             // longer change the pressure, and they may be
                             // needed as barometers.
+                            this.SetPressureLightsHigh();
                         }
                         break;
                     case PressureTarget.Habitat:
@@ -1260,7 +1360,7 @@ namespace IngameScript
                         {
                             this.IsPressureAtTarget = true;
                             this.DisableDrainVents();
-                            //this.DisableFillVents();
+                            this.SetPressureLightsHigh();
                         }
                         break;
                     case PressureTarget.Vacuum:
@@ -1279,7 +1379,7 @@ namespace IngameScript
                         {
                             this.IsPressureAtTarget = true;
                             this.DisableDrainVents();
-                            //this.DisableFillVents();
+                            this.SetPressureLightsLow();
                         }
                         break;
                     default:
