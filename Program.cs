@@ -70,7 +70,7 @@ namespace IngameScript
             {
                 foreach (Airlock thisAirlock in this._allAirlocks.Values)
                 {
-                    thisAirlock.Update();
+                    if (thisAirlock.IsComplete()) thisAirlock.Update();
                 }
             }
 
@@ -272,6 +272,6 @@ namespace IngameScript
             theAirlock.QueueMode(newMode, graceDelaySeconds);
         } //QueueModeCommand()
 
-        #endregion Command Implemenations
+        #endregion Command Implementations
     }
 }
