@@ -1,4 +1,4 @@
-# SE-FrugalAirlock (a.k.a. TNG's Frugal Airlock)
+ SE-FrugalAirlock (a.k.a. TNG's Frugal Airlock)
 
 ## An airlock-management script for the game Space Engineers ##
 
@@ -18,16 +18,14 @@ few key principles, in this order:
    you._ The script requires a few obligatory elements to be in place (obvious
    things like Air Vents and an airtight structure and less obvious things like
    drainage tanks), but beyond those it doesn't care about size, shape, or
-   style. As for the method of engineer interaction, the script makes it extra
-   easy to set up common arrangements like button panels or sensors. For the
-   daring, there is also an API of commands you can use to set up fancier
-   interfaces and integrations.
+   style.
 
 3. _The player should not have to touch the script._ Configuring the script to
    work with your design is done by adding INI-style text to the CustomData of
-   your various airlock-related blocks, from a well-commented template. There is
-   no need to edit the script with a list of block or group names, nor is any
-   naming convention imposed.
+   your various airlock-related blocks, from a well-commented template. Blocks
+   that trigger airlock operation are easy to set up with well-documented
+   commands. There is no need to edit the script with a list of block or group
+   names, nor is any naming convention imposed.
 
 Complete details are in [the wiki](https://github.com/TheNicestGuy/SE-FrugalAirlock/wiki).
 
