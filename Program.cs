@@ -57,10 +57,40 @@ namespace IngameScript
 
             // Perform initial discovery
             this.RediscoverCommand(true);
-        }
+
+            // Load state from storage
+            if (this._theIniParser.TryParse(this.Storage))
+            {
+                List<string> airlockNames = new List<string>();
+                this._theIniParser.GetSections(airlockNames);
+                foreach (string thisAirlockName in airlockNames)
+                {
+                    if (this._allAirlocks.ContainsKey(thisAirlockName))
+                    {
+                        //List<MyIniKey> thisAirlockKeys = new List<MyIniKey>();
+                        //this._theIniParser.GetKeys(thisAirlockName, thisAirlockKeys);
+                        this._allAirlocks[thisAirlockName].Deserialize(this._theIniParser);
+                        this._allAirlocks[thisAirlockName].Update();
+                    }
+                    else
+                    {
+                        throw new Exception(
+                            $"Saved state included a section called '{thisAirlockName}', but no airlock by this name exists."
+                        );
+                    }
+                } // foreach thisAirlockName
+            } // if could parse Storage
+            this._theIniParser.Clear();
+        } // Program() constructor
 
         public void Save()
         {
+            this._theIniParser.Clear();
+            foreach (Airlock thisAirlock in this._allAirlocks.Values)
+            {
+                thisAirlock.Serialize(this._theIniParser);
+            }
+            this.Storage = this._theIniParser.ToString();
         }
 
         public void Main(string argument, UpdateType updateSource)
