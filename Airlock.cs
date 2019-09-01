@@ -992,6 +992,62 @@ namespace IngameScript
 
             #endregion Constructors and Factory Methods
 
+            #region Serialization
+
+            /// <summary>
+            /// Writes the values of the <see cref="TargetMode"/> and <see
+            /// cref="QueuedMode"/> properties to a provided <see cref="MyIni"/>
+            /// object for persistent storage.
+            /// </summary>
+            /// <param name="theIniParser">A MyIni object to write to</param>
+            /// <remarks>
+            /// <para>The two properties are each written as their own key
+            /// (named "TargetMode" and "QueuedMode" within a section named
+            /// after this Airlock's <see cref="Name"/>.</para>
+            /// <para><paramref name="theIniParser"/> is not cleared or
+            /// invalidated by this method.</para>
+            /// </remarks>
+            public void Serialize(MyIni theIniParser)
+            {
+                if (null == theIniParser)
+                {
+                    throw new ArgumentNullException("theIniParser");
+                }
+
+                theIniParser.Set(this.Name, "TargetMode", (int)this.TargetMode);
+                if (this.QueuedMode.HasValue)
+                    theIniParser.Set(this.Name, "QueuedMode", (int)this.QueuedMode.Value);
+
+            }
+
+            /// <summary>
+            /// Reads values out of a provided <see cref="MyIni"/> object into
+            /// this Airlock's <see cref="TargetMode"/> and <see
+            /// cref="QueuedMode"/> properties.
+            /// </summary>
+            /// <param name="theIniParser">A MyIni object to read from</param>
+            /// <remarks>
+            /// <para>This method looks for a section within <paramref
+            /// name="theIniParser"/> with a name matching this Airlock's <see
+            /// cref="Name"/>. Within that, it looks for keys named "TargetMode"
+            /// and "QueuedMode".</para>
+            /// <para><paramref name="theIniParser"/> is not cleared or
+            /// invalidated by this method.</para>
+            /// </remarks>
+            public void Deserialize(MyIni theIniParser)
+            {
+                if (null == theIniParser) return;
+
+                this.TargetMode = (Mode)(theIniParser.Get(this.Name, "TargetMode").ToInt32());
+                if (theIniParser.ContainsKey(this.Name, "QueuedMode"))
+                    this.QueuedMode = (Mode)(theIniParser.Get(this.Name, "QueuedMode").ToInt32());
+                else
+                    this.QueuedMode = null;
+
+            }
+
+            #endregion Serialization
+
             #region Instance Methods / Utility
 
             /// <summary>
